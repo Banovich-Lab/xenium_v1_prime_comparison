@@ -23,3 +23,10 @@
 ---
 
 <sup>*</sup> Authors contributed equally.
+
+--- 
+
+## Abstract
+
+Spatial transcriptomics faces a trade-off between the number of genes assayed and depth of per-gene sensitivity. We developed a 'dual chemistry' method that combines the high sensitivity of a 10X Genomics Xenium V1 custom panel (up to 480 genes) with the broad coverage of the Prime 5K panel (5001 genes) on a single tissue section. This involved co-hybridizing Prime and V1 probes and sequentially running the V1 and Prime decoding chemistries. Applied to a human lung tissue microarray, we observed high concordance between the V1 and Prime chemistries when run independently (on serial sections) and the dual chemistry runs. Overlapping genes (profiled on both V1 and Prime chemistries) showed similar expression patterns in the dual run demonstrating the fidelity of the assay. By combining information from both the V1 and Prime chemistries within the same cell, we retain more cells, gain valuable additional information, and enable both high sensitivity profiling and discovery.
+
