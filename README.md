@@ -2,10 +2,7 @@
 
 ## Authors
 
-**Arianna L. Williams-Katek**<sup>1,*</sup>, **Saahithi Mallapragada**<sup>1,2,*</sup>,  
-Evan D. Mee<sup>1</sup>, Brandon K. Fischer<sup>1</sup>, Laurie C. Eldredge<sup>3,4,5</sup>,  
-Gail H. Deutsch<sup>4,5,6</sup>, Jonathan A. Kropski<sup>7,8,9,10</sup>,  
-Jennifer M. S. Sucre<sup>7,10,11</sup>, **Nicholas E. Banovich**<sup>1,9,10</sup>
+**Arianna L. Williams-Katek**<sup>1,*</sup>, **Saahithi Mallapragada**<sup>1,2,*</sup>, Evan D. Mee<sup>1</sup>, Brandon K. Fischer<sup>1</sup>, Laurie C. Eldredge<sup>3,4,5</sup>, Gail H. Deutsch<sup>4,5,6</sup>, Jonathan A. Kropski<sup>7,8,9,10</sup>, Jennifer M. S. Sucre<sup>7,10,11</sup>, **Nicholas E. Banovich**<sup>1,9,10</sup>
 
 ---
 
