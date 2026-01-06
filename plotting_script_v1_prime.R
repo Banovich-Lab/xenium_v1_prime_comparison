@@ -725,6 +725,8 @@ dev.off()
 
 seurat_obj_combined <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_filtered_joined_2025_11_25.rds")
 
+## Keeping all cells
+
 # Split seurat objects based on panel
 genes <- rownames(seurat_obj_combined@assays$RNA@counts)
 
@@ -779,19 +781,9 @@ if (nrow(seurat_obj_prime_with_v1_seg@assays$RNA@scale.data) > 0) {
 seurat_obj_v1_prime_overlap <- seurat_obj_v1_prime[gene_overlaps, ]
 seurat_obj_prime_with_v1_seg_overlap <- seurat_obj_prime_with_v1_seg[gene_overlaps, ]
 
-total_counts_v1 <- colSums(seurat_obj_v1_prime_overlap@assays$RNA@counts)
-total_counts_prime <- colSums(seurat_obj_prime_with_v1_seg_overlap@assays$RNA@counts)
-
-# Identify cells that have > 0 counts in V1 AND > 0 counts in Prime
-cells_to_keep <- colnames(seurat_obj_v1_prime_overlap)[total_counts_v1 > 0 & total_counts_prime > 0]
-
-# Subset both objects to this specific list of cells
-seurat_obj_v1_filtered <- seurat_obj_v1_prime_overlap[, cells_to_keep]
-seurat_obj_prime_filtered <- seurat_obj_prime_with_v1_seg_overlap[, cells_to_keep]
-
 # Create your matrices for the heatmap
-cell_gene_matrix_v1 <- as.matrix(seurat_obj_v1_filtered@assays$RNA@counts)
-cell_gene_matrix_prime <- as.matrix(seurat_obj_prime_filtered@assays$RNA@counts)
+cell_gene_matrix_v1 <- as.matrix(seurat_obj_v1_prime_overlap@assays$RNA@counts)
+cell_gene_matrix_prime <- as.matrix(seurat_obj_prime_with_v1_seg_overlap@assays$RNA@counts)
 
 avg_expression_v1 <- rowMeans(cell_gene_matrix_v1)
 feature_names_v1 <- rownames(cell_gene_matrix_v1)
@@ -809,7 +801,7 @@ cell_gene_matrix_df_exp <- data.frame(
 
 # Function to calculate the correlation between each gene across both panels
 run_cor_test_row <- function(row_cell_gene_matrix_v1, row_cell_gene_matrix_prime) {
-  cor_result <- cor.test(row_cell_gene_matrix_v1, row_cell_gene_matrix_prime, method = "pearson")
+  cor_result <- cor.test(row_cell_gene_matrix_v1, row_cell_gene_matrix_prime, method = "spearman")
   return(c(
     r_value = cor_result$estimate,
     p_value = cor_result$p.value
@@ -825,11 +817,39 @@ results_matrix <- mapply(
 cor_mat <- as.data.frame(t(results_matrix)) %>%
   rownames_to_column() %>%
   rename(genes = rowname) %>%
-  rename(`R-value` = r_value.cor) %>%
+  rename(`R-value` = r_value.rho) %>%
   inner_join(., cell_gene_matrix_df_exp) %>%
   column_to_rownames("genes") %>%
   select(-p_value) %>%
   as.matrix()
+
+## Retaining cells that have at least one count or more in both chemistries
+
+pattern <- paste0("\\b(", paste(gene_overlaps, collapse = "|"), ")\\b")
+matched_genes <- grep(pattern, rownames(seurat_obj_combined), value = TRUE)
+
+matched_genes <- matched_genes[!grepl("SOX2-OT", matched_genes)]
+
+# Subset the object by these features
+seurat_obj_combined_overlaps_both <- seurat_obj_combined[matched_genes, ]
+seurat_obj_combined_overlaps_both_counts <- GetAssayData(seurat_obj_combined_overlaps_both, slot = "counts")
+
+names_a <- paste0(gene_overlaps, string_a)
+names_b <- paste0(gene_overlaps, string_b)
+
+mat_a <- seurat_obj_combined_overlaps_both_counts[names_a, ]
+mat_b <- seurat_obj_combined_overlaps_both_counts[names_b, ]
+
+keep_mask <- (mat_a != 0 & mat_b != 0)
+
+cells_kept_count <- rowSums(keep_mask)
+
+gene_keep_summary <- data.frame(
+  gene = gene_overlaps,
+  cells_kept = cells_kept_count,
+  total_cells = ncol(seurat_obj_combined_overlaps_both_counts),
+  stringsAsFactors = FALSE
+)
 
 ## Plot
 
@@ -837,7 +857,7 @@ cor_mat <- as.data.frame(t(results_matrix)) %>%
 r_mat <- cor_mat[, "R-value", drop = FALSE]
 
 # Expression matrix
-exp_mat <- cor_mat[, c("V1", "Prime")]
+exp_mat <- cor_mat_all_cells[, c("V1", "Prime")]
 
 # Color schemes
 magma_colors <- rev(magma(256))
@@ -944,6 +964,10 @@ v1_secreted_genes <- read.delim("/scratch/smallapragada/bbl_project/v1_prime5k_c
                                 sep = ",", header = FALSE)
 prime_secreted_genes <- read.delim("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/saved_csvs/Secreted_5K.csv", 
                                    sep = ",", header = FALSE)
+
+## Stats about secreted genes
+summary(dual_obj_combined_v1$nCount_RNA)
+summary(dual_obj_combined_v1$nCount_RNA)
 
 ## Subsetting the combined seurat object into V1 vs Prime secreted genes
 v1_secreted_genes_full_names <- paste0(v1_secreted_genes$V1, "-v1-prime")
@@ -2148,4 +2172,3 @@ alluvial <- alluvial_v1 / alluvial_prime
 pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_v1_alluvial_supp.pdf", width = 7, height = 8)
 alluvial
 dev.off()
-
