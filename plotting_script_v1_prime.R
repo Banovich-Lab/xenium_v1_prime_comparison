@@ -817,7 +817,7 @@ results_matrix <- mapply(
 cor_mat <- as.data.frame(t(results_matrix)) %>%
   rownames_to_column() %>%
   rename(genes = rowname) %>%
-  rename(`R-value` = r_value.rho) %>%
+  rename(`Rho-value` = r_value.rho) %>%
   inner_join(., cell_gene_matrix_df_exp) %>%
   column_to_rownames("genes") %>%
   select(-p_value) %>%
@@ -876,7 +876,7 @@ exp_colors <- colorRamp2(
 
 ht_r <- Heatmap(
   r_mat,
-  name = "R value",      
+  name = "Rho value",      
   col = r_colors,
   cluster_rows = FALSE,
   cluster_columns = FALSE,
@@ -1683,7 +1683,7 @@ pdf("/home/smallapragada/v1_5K_panel_comparison_project/v1_violin_nfeature_sampl
 feature_plot_v1
 dev.off()
 
-## Figure 4 - nCount and nFeature split by sample (prime)
+## Figure S4 - nCount and nFeature split by sample (prime)
 
 plot_data_prime <- FetchData(
   object = merged_obj_unfiltered_prime, 
@@ -1758,286 +1758,69 @@ pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_nfeature_sa
 feature_plot_prime
 dev.off()
 
-## Figure S6 - Full TMA feature plots of ID4
+### Figure S6 - Correlation scatterplots of V1 solo vs prime solo & V1 Dual vs prime dual for overlapped genes
 
-dual_obj_combined_subset <- subset(dual_obj_combined_genes, subset = sample == "PDL095D")
-dual_obj_v1_subset <- subset(dual_obj_v1_genes, subset = sample == "PDL095D")
-dual_obj_prime_subset <- subset(dual_obj_prime_genes, subset = sample == "PDL095D")
+# V1_solo vs. Prime_solo
+transcript_count_files$prime_solo$gene_count_filtered <- as.numeric(transcript_count_files$prime_solo$gene_count_filtered)
+transcript_count_files$v1_solo$gene_count_filtered <- as.numeric(transcript_count_files$v1_solo$gene_count_filtered)
 
-## ID4 plot
-plot_v1 <- FeaturePlot(
-  object = dual_obj_v1_genes,
-  features = "ID4-v1-prime",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
+merged_df_solo <- inner_join(
+  tibble(feature_name = rownames(transcript_count_files$prime_solo), x = transcript_count_files$prime_solo$gene_count_filtered),
+  tibble(feature_name = rownames(transcript_count_files$v1_solo), y = transcript_count_files$v1_solo$gene_count_filtered),
+  by = "feature_name"
+)
+
+solo_plot <- ggplot(merged_df_solo, aes(x = x, y = y)) +
+  geom_point(alpha = 1, size = 1.0, color = "blue") +
   theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_prime <- FeaturePlot(
-  object = dual_obj_prime_genes,
-  features = "ID4-prime-with-v1-seg",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
+  labs(
+    x = "Total transcripts (Prime solo)",
+    y = "Total transcripts (V1 solo)"
   ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_combined <- FeaturePlot(
-  object = dual_obj_combined_genes,
-  features = "ID4",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
+  scale_x_continuous(
+    limits = c(0, 900000), 
+    labels = label_number(suffix = "K", scale = 1e-3, big.mark = "")
   ) +
+  scale_y_continuous(
+    limits = c(0, 900000),
+    labels = label_number(suffix = "K", scale = 1e-3, big.mark = "")
+  ) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") 
+
+# V1_prime vs. Prime_V1
+transcript_count_files$prime_v1$gene_count_filtered <- as.numeric(transcript_count_files$prime_v1$gene_count_filtered)
+transcript_count_files$v1_prime$gene_count_filtered <- as.numeric(transcript_count_files$v1_prime$gene_count_filtered)
+
+merged_df_dual <- inner_join(
+  tibble(feature_name = rownames(transcript_count_files$prime_v1), x = transcript_count_files$prime_v1$gene_count_filtered),
+  tibble(feature_name = rownames(transcript_count_files$v1_prime), y = transcript_count_files$v1_prime$gene_count_filtered),
+  by = "feature_name"
+)
+
+dual_plot <- ggplot(merged_df_dual, aes(x = x, y = y)) +
+  geom_point(alpha = 1, size = 1.0, color = "red") +
   theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
+  labs(
+    x = "Total transcripts (Prime dual)",
+    y = "Total transcripts (V1 dual)"
+  ) +
+  scale_x_continuous(
+    limits = c(0, 900000), 
+    labels = label_number(suffix = "K", scale = 1e-3, big.mark = "")
+  ) +
+  scale_y_continuous(
+    limits = c(0, 900000),
+    labels = label_number(suffix = "K", scale = 1e-3, big.mark = "")
+  ) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") 
 
-id4_spatial_plot <- plot_v1 | plot_prime | plot_combined
+plot <- solo_plot + dual_plot
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/id4_feature_plot_fulltma_supp.pdf", width = 8, height = 4)
-id4_spatial_plot
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/supp_scatterplot_overlap_solo_dual.pdf", width = 7.5, height = 3.5)
+plot
 dev.off()
 
-## Figure S7 - Full TMA feature plots of FILIP1L
-plot_v1 <- FeaturePlot(
-  object = dual_obj_v1_genes,
-  features = "FILIP1L-v1-prime",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_prime <- FeaturePlot(
-  object = dual_obj_prime_genes,
-  features = "FILIP1L-prime-with-v1-seg",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_combined <- FeaturePlot(
-  object = dual_obj_combined_genes,
-  features = "FILIP1L",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-filip4_spatial_plot <- plot_v1 | plot_prime | plot_combined
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/FILIP1L_feature_plot_fulltma_supp.pdf", width = 8, height = 4)
-filip4_spatial_plot
-dev.off()
-
-## Figure S8 - Full TMA feature plots of EPAS1
-plot_v1 <- FeaturePlot(
-  object = dual_obj_v1_genes,
-  features = "EPAS1-v1-prime",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_prime <- FeaturePlot(
-  object = dual_obj_prime_genes,
-  features = "EPAS1-prime-with-v1-seg",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-plot_combined <- FeaturePlot(
-  object = dual_obj_combined_genes,
-  features = "EPAS1",
-  reduction = "spatial",
-  slot = "counts",
-  max.cutoff = 5, 
-  raster = FALSE,
-  pt.size = 0.05
-) +
-  scale_colour_gradientn(
-    colors = brewer.pal(n = 9, name = "YlGnBu"), 
-    breaks = c(0, 1, 2, 3, 4), 
-    name = " "
-  ) +
-  theme_classic() +
-  theme(axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        plot.title = element_blank(),
-        axis.line = element_blank(),
-        legend.title = element_text(size = 8), 
-        legend.text = element_text(size = 7), 
-        legend.key.height = unit(0.5, "cm"),   
-        legend.key.width = unit(0.25, "cm"))
-
-epas1_spatial_plot <- plot_v1 | plot_prime | plot_combined
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/EPAS1_feature_plot_fulltma_supp.pdf", width = 8, height = 4)
-epas1_spatial_plot
-dev.off()
-
-### Figure S9 - V1 - Prime - Combined + Prime - V1 - Combined alluvial
+### Figure S7 - V1 - Prime - Combined + Prime - V1 - Combined alluvial
 
 prime_origin_leiden <- dual_obj_prime_meta_v1_combined %>%
   select(leiden_0.5_prime, leiden_0.5_v1, leiden_0.5_combined)
