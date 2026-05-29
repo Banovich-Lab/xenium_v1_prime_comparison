@@ -22,17 +22,20 @@ library(ComplexHeatmap)
 library(cowplot)
 library(patchwork)
 library(scCustomize)
-library(ggalluvial)
-library(ggraph, lib.loc = my_lib_path)
+library(eulerr)
 
 ## Set seed & working directory
 set.seed(0712)
-work_dir <- setwd("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/")
+work_dir <- setwd("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/")
 
 options(scipen=999)
 
 ## "not in" operand function
 '%!in%' <- function(x,y)!('%in%'(x,y))
+
+## All objects
+merged_obj_unfiltered_v1 <- readRDS("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/objects/v1_slides_2025_11_20.rds")
+merged_obj_unfiltered_prime <- readRDS("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/objects/prime_slides_2025_11_20.rds")
 
 #### FIGURE 1 ----
 
@@ -198,7 +201,7 @@ merged_obj_unfiltered_prime_dual <- subset(merged_obj_unfiltered_prime, subset =
 merged_obj_unfiltered_prime_solo_split <- SplitObject(merged_obj_unfiltered_prime_solo, split.by = "sample")
 merged_obj_unfiltered_prime_dual_split <- SplitObject(merged_obj_unfiltered_prime_dual, split.by = "sample")
 
-# Extracting the gene counts and pulling them into dfs
+ # Extracting the gene counts and pulling them into dfs
 
 listed_list <- list(
   v1_solo = merged_obj_unfiltered_v1_solo_split,
@@ -299,15 +302,17 @@ heatmap <- Heatmap(final_correlation_mat,
                    column_names_rot = 0,
                    heatmap_legend_param = list(
                      title = "R-value",
-                     legend_width = unit(1.5, "cm"),
+                     legend_width = unit(4, "cm"),
+                     direction = "horizontal",
+                     title_position = "topcenter",
                      title_gp = gpar(fontsize = 6, fontface = "bold"),
                      labels_gp = gpar(fontsize = 5)
                    ))
 
-draw(heatmap)
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/heatmap_label.pdf", width = 1.7, height = 3.1)
-draw(heatmap)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/heatmap_label.pdf", width = 1.7, height = 3)
+draw(heatmap,
+     heatmap_legend_side = "bottom",
+     merge_legends = TRUE)
 dev.off()
 
 heatmap <- Heatmap(final_correlation_mat, 
@@ -327,7 +332,7 @@ heatmap <- Heatmap(final_correlation_mat,
 
 draw(heatmap)
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/heatmap_plot.pdf", width = 1.7, height = 3.1)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/heatmap_plot.pdf", width = 1.5, height = 3.7)
 draw(heatmap)
 dev.off()
 
@@ -545,11 +550,62 @@ pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_boxplots_zscore.pd
 prime_zscore_plot
 dev.off()
 
+### Identifying Z-scores from genes in BLAST analysis
+
+blast_genes <- c("ACAA2", "ADAMTS1", "ADGRL4", "AGR3", "APLNR", "ARF6", "ASPN", "ATG7", "BANK1", "BAX", "BCL2",
+                 "BCL2L11", "BMP4", "BMPR2", "CCL18", "CCN2", "CD14", "CD151", "CD163", "CD19", "CD1C", "CD1E", "CD247", "CD27",
+                 "CD34", "CD3E", "CD3G", "CD4", "CD44", "CD47", "CD79A", "CD79B", "CD8A", "CD8B", "CES1", "CFTR", "CH25H", "CHIT1",
+                 "CLDN5", "COL4A1", "COL4A3", "CTHRC1", "CXCL13", "CXCL6", "CXCR4", "DERL3", "DNAH12", "ELANE", "EPAS1", "EREG", "FAP",
+                 "FASN", "FCER1A", "FCGBP", "FCGR3A", "FGF7", "FGFR4", "FKBP11", "FOXJ1", "FSTL1", "GATA6", "GBP1", "GCLM", "GDF15",
+                 "GSR", "HDAC9", "HES1", "HEY1", "HIF1A", "HMGA1", "HRAS", "ICAM1", "IDH1", "IFI16", "IFT57", "IRF1", "IRF7", "ITGA3",
+                 "ITGB6", "KDR", "KIT", "KLRB1", "KLRC1", "KLRG1", "LCK", "LILRA4", "LTBP2", "MAD1L1", "MARCO", "MLPH", "MMP12",
+                 "MS4A1", "MSLN", "MUC5B", "MYC", "NRP1", "NTN4", "NUCB2", "PDIA4", "PI16", "PIM2", "PLVAP", "POSTN", "PPARG", "PROM1",
+                 "PTGS1", "PTPN6", "RNASEH2C", "RSPO2", "RSPO3", "RTKN2", "SELL", "SEMA3A", "SFRP1", "SLC25A4", "SLIT3", "SMPD3",
+                 "SNAI1", "SOX9", "SPATS2L", "SPRY2", "SRSF1", "STAT1", "STAT6", "SVEP1", "TBX4", "TCL1A", "TGFB1", "TGFB2",
+                 "TNFRSF13C", "TP53", "TREM2", "TRIM47", "TSPAN4", "UNC119", "UPK3B", "VEGFA", "WNT2", "WNT3A", "WNT5A", "WT1",
+                 "WWTR1")
+
+blast_genes_zscores <- inner_join(
+  transcript_count_v1_df_zscore %>%
+    filter(feature_name %in% blast_genes) %>%
+    select(feature_name, zscore_v1_solo, zscore_v1_prime),
+  transcript_count_prime_df_zscore %>%
+    filter(feature_name %in% blast_genes) %>%
+    select(feature_name, zscore_prime_solo, zscore_prime_v1),
+  by = "feature_name"
+) %>%
+  rename(
+    v1_solo  = zscore_v1_solo,
+    v1_dual  = zscore_v1_prime,
+    prime_solo = zscore_prime_solo,
+    prime_dual = zscore_prime_v1
+  )
+
+write_csv(blast_genes_zscores,
+          "/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/blast_genes_zscores.csv")
+
+non_blast_genes_zscores <- inner_join(
+  transcript_count_v1_df_zscore %>%
+    filter(feature_name %!in% blast_genes) %>%
+    select(feature_name, zscore_v1_solo, zscore_v1_prime),
+  transcript_count_prime_df_zscore %>%
+    filter(feature_name %!in% blast_genes) %>%
+    select(feature_name, zscore_prime_solo, zscore_prime_v1),
+  by = "feature_name"
+) %>%
+  rename(
+    v1_solo   = zscore_v1_solo,
+    v1_dual   = zscore_v1_prime,
+    prime_solo = zscore_prime_solo,
+    prime_dual = zscore_prime_v1
+  )
+
+write_csv(non_blast_genes_zscores,
+          "/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/non_blast_genes_zscores.csv")
+
 ### Figure 1E - Violin plots
 
 ## V1 only plot
-
-merged_obj_unfiltered_v1 <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_slides_2025_11_20.rds")
 
 plot_data_v1 <- FetchData(
   object = merged_obj_unfiltered_v1, 
@@ -569,7 +625,7 @@ count_plot_v1 <- ggplot(plot_data_v1, aes(x = slide_type, y = nCount_RNA, fill =
   scale_y_continuous(breaks = pretty_breaks(n = 3)) + 
   scale_fill_manual(values= c("#FE6100", "#662D91")) +
   labs(y = "Total transcripts", title = "V1 panel") +
-  theme(axis.text.x = element_blank(),
+  theme(axis.text.x = element_text(color = "black", size = 7, face = "bold"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.ticks.x = element_blank(),
@@ -581,7 +637,7 @@ count_plot_v1 <- ggplot(plot_data_v1, aes(x = slide_type, y = nCount_RNA, fill =
         plot.title = element_text(face = "bold", size = 8, color = "black", hjust = 0.5),
         legend.position = "none")
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/v1_violin_ncount.pdf", width = 1.7, height = 1.2)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/v1_violin_ncount.pdf", width = 1.8, height = 1.2)
 count_plot_v1
 dev.off()
 
@@ -602,13 +658,11 @@ feature_plot_v1 <- ggplot(plot_data_v1, aes(x = slide_type, y = nFeature_RNA, fi
         axis.title.x = element_blank(),
         legend.position = "none")
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/v1_violin_nfeature.pdf", width = 1.7, height = 1.4)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/v1_violin_nfeature.pdf", width = 1.8, height = 1.3)
 feature_plot_v1
 dev.off()
 
 ## Prime only plot
-
-merged_obj_unfiltered_prime <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/prime_slides_2025_11_20.rds")
 
 plot_data_prime <- FetchData(
   object = merged_obj_unfiltered_prime, 
@@ -628,7 +682,7 @@ count_plot_prime <- ggplot(plot_data_prime, aes(x = slide_type, y = nCount_RNA, 
   scale_y_continuous(breaks = pretty_breaks(n = 3)) + 
   scale_fill_manual(values= c("#2E6F40", "#662D91")) +
   labs(y = " ", title = "Prime panel") +
-  theme(axis.text.x = element_blank(),
+  theme(axis.text.x = element_text(color = "black", size = 7, face = "bold"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.ticks.x = element_blank(),
@@ -640,7 +694,7 @@ count_plot_prime <- ggplot(plot_data_prime, aes(x = slide_type, y = nCount_RNA, 
         plot.title = element_text(face = "bold", size = 8, color = "black", hjust = 0.5),
         legend.position = "none")
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_ncount.pdf", width = 1.7, height = 1.2)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_ncount.pdf", width = 1.8, height = 1.2)
 count_plot_prime
 dev.off()
 
@@ -661,7 +715,7 @@ feature_plot_prime <- ggplot(plot_data_prime, aes(x = slide_type, y = nFeature_R
         axis.title.x = element_blank(),
         legend.position = "none")
 
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_nfeature.pdf", width = 1.7, height = 1.4)
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_nfeature.pdf", width = 1.8, height = 1.3)
 feature_plot_prime
 dev.off()
 
@@ -670,7 +724,7 @@ dev.off()
 ## Figure 2B - Cell count bar plots pre and post filtering
 
 # CSV from python
-cell_counts <- read.delim("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/cell_counts_prepostfiltering.csv", sep = ",")
+cell_counts <- read.delim("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/cell_counts_prepostfiltering.csv", sep = ",")
 
 # Setting up data for plot
 cell_counts$Filtering_Stage <- factor(cell_counts$Filtering_Stage,
@@ -723,7 +777,7 @@ dev.off()
 
 ## Figure 2D - Heatmap of overlapping genes
 
-seurat_obj_combined <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_filtered_joined_2025_11_25.rds")
+seurat_obj_combined <- readRDS("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/v1_prime_filtered_joined_2025_11_25.rds")
 
 ## Keeping all cells
 
@@ -951,421 +1005,26 @@ pdf("/home/smallapragada/v1_5K_panel_comparison_project/heatmap_r_val_avg_exp_la
 draw(final_heatmap)
 dev.off()
 
-### Figure 2E - secreted genes histogram
-
-## Importing dual slide and splitting based on panel genes
-dual_obj_combined <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_comparison_allgenes_20pcs_2025_12_02.rds")
-
-dual_obj_combined_v1 <- dual_obj_combined[genes_v1_prime, ]
-dual_obj_combined_prime <- dual_obj_combined[genes_prime_with_v1_seg, ]
-
-# Importing secreted gene lists
-v1_secreted_genes <- read.delim("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/saved_csvs/Secreted_v1.csv", 
-                                sep = ",", header = FALSE)
-prime_secreted_genes <- read.delim("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/saved_csvs/Secreted_5K.csv", 
-                                   sep = ",", header = FALSE)
-
-## Stats about secreted genes
-summary(dual_obj_combined_v1$nCount_RNA)
-summary(dual_obj_combined_v1$nCount_RNA)
-
-## Subsetting the combined seurat object into V1 vs Prime secreted genes
-v1_secreted_genes_full_names <- paste0(v1_secreted_genes$V1, "-v1-prime")
-matching_genes <- v1_secreted_genes_full_names[v1_secreted_genes_full_names %in% rownames(dual_obj_combined_v1)]
-seurat_obj_v1_secreted_genes <- dual_obj_combined_v1[matching_genes, ]
-
-prime_secreted_genes_full_names <- paste0(prime_secreted_genes$V1, "-prime-with-v1-seg")
-matching_genes <- prime_secreted_genes_full_names[prime_secreted_genes_full_names %in% rownames(dual_obj_combined_prime)]
-seurat_obj_prime_secreted_genes <- dual_obj_combined_prime[matching_genes, ]
-
-## Calculating nFeature per each panel secreted genes
-v1_counts_matrix <- GetAssayData(
-  object = seurat_obj_v1_secreted_genes, 
-  assay = "RNA", 
-  slot = "counts"
-)
-
-v1_n_feature_per_cell <- colSums(v1_counts_matrix > 0)
-
-v1_secreted_seurat_obj_final <- AddMetaData(
-  object = seurat_obj_v1_secreted_genes,
-  metadata = v1_n_feature_per_cell,
-  col.name = "nFeature_RNA_v1_secreted" 
-)
-
-prime_counts_matrix <- GetAssayData(
-  object = seurat_obj_prime_secreted_genes, 
-  assay = "RNA", 
-  slot = "counts"
-)
-
-prime_n_feature_per_cell <- colSums(prime_counts_matrix > 0)
-
-prime_secreted_seurat_obj_final <- AddMetaData(
-  object = seurat_obj_prime_secreted_genes,
-  metadata = prime_n_feature_per_cell,
-  col.name = "nFeature_RNA_prime_secreted" 
-)
-
-v1_data <- data.frame(
-  nFeature_RNA = v1_secreted_seurat_obj_final$nFeature_RNA_v1_secreted,
-  Sample = "V1 Secreted"
-)
-
-prime_data <- data.frame(
-  nFeature_RNA = prime_secreted_seurat_obj_final$nFeature_RNA_prime_secreted,
-  Sample = "Prime Secreted"
-)
-
-# Combine the data frames
-combined_data <- bind_rows(v1_data, prime_data)
-
-density_plot <- ggplot(combined_data, aes(x = nFeature_RNA, fill = Sample)) +
-  geom_density(
-    aes(y = after_stat(count)),
-    alpha = 0.5,          
-    color = "black", 
-    bw = 0.75
-  ) +
-  xlim(0, 40) + 
-  scale_fill_manual(values = c("V1 Secreted" = "purple4", "Prime Secreted" = "darkorange")) +
-  labs(
-    x = "Unique genes per cell",
-    y = "Cell count", 
-    fill = " "
-  ) +
-  theme_classic() +
-  theme(
-    axis.ticks.y = element_line(color = "black"),
-    axis.text.y = element_text(color = "black", size = 6),
-    axis.title.y = element_text(color = "black", size = 7, face = "bold"),
-    axis.ticks.x = element_line(color = "black"), 
-    axis.text.x = element_text(color = "black", size = 6), 
-    axis.title.x = element_text(color = "black", size = 7, face = "bold"),
-    legend.key.size = unit(2.5, "mm"),
-    legend.text = element_text(color = "black", size = 6)
-  )
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/density_plot.pdf", width = 3.7, height = 2.5)
-density_plot
-dev.off()
-
-#### FIGURE 3 ----
-
-### Figure 3A - Triple UMAP across all panels
-
-## Mapping cell ids to each object
-
-dual_obj_combined <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_comparison_allgenes_20pcs_2025_12_02.rds")
-dual_obj_v1 <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_comparison_v1genes_20pcs_2025_12_02.rds")
-dual_obj_prime <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_prime_primegenes_combined_20pcs_2025_12_02.rds")
-
-# Metadata
-dual_obj_combined_meta <- dual_obj_combined@meta.data
-dual_obj_v1_meta <- dual_obj_v1@meta.data
-dual_obj_prime_meta <- dual_obj_prime@meta.data
-
-# Pulling cell clusters from each object
-combined_df_labels <- dual_obj_combined@meta.data %>%
-  rownames_to_column(var = "cell_ids_rownames") %>%
-  select(cell_ids_rownames, matched_cell_ids, leiden_0.5_combined, leiden_1.0_combined) 
-  
-v1_df_labels <- dual_obj_v1@meta.data %>% 
-  rownames_to_column(var = "cell_ids_rownames") %>%
-  select(cell_ids_rownames, matched_cell_ids, leiden_0.5_v1, leiden_1.0_v1) 
-  
-prime_df_labels <- dual_obj_prime@meta.data %>%
-  rownames_to_column(var = "cell_ids_rownames") %>%
-  select(cell_ids_rownames, matched_cell_ids, leiden_0.5_prime, leiden_1.0_prime) 
-
-## V1 metadata 
-dual_obj_v1_meta_start <- dual_obj_v1@meta.data %>%
-  rownames_to_column(var = "cell_ids_rownames_initial")
-
-dual_obj_v1_meta_prime <- merge(
-  x = dual_obj_v1_meta_start,
-  y = prime_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-)
-
-dual_obj_v1_meta_prime_combo <- merge(
-  x = dual_obj_v1_meta_prime,
-  y = combined_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-) %>%
-  column_to_rownames(var = "cell_ids_rownames_initial")
-
-# Remove the extraneous cell_ids_rownames columns generated by the merges
-cols_to_remove <- c("cell_ids_rownames.x", "cell_ids_rownames.y", "cell_ids_rownames") 
-cols_to_remove_final <- intersect(cols_to_remove, colnames(dual_obj_v1_meta_prime_combo))
-
-dual_obj_v1_meta_prime_combo <- dual_obj_v1_meta_prime_combo %>%
-  select(-one_of(cols_to_remove_final))
-
-# Assign back to the Seurat object
-dual_obj_v1@meta.data <- dual_obj_v1_meta_prime_combo
-
-## Combined metadata 
-dual_obj_combined_meta_start <- dual_obj_combined@meta.data %>%
-  rownames_to_column(var = "cell_ids_rownames_initial")
-
-dual_obj_combined_meta_v1 <- merge(
-  x = dual_obj_combined_meta_start,
-  y = v1_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-)
-
-dual_obj_combined_meta_v1_prime <- merge(
-  x = dual_obj_combined_meta_v1,
-  y = prime_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-) %>%
-  column_to_rownames(var = "cell_ids_rownames_initial")
-
-# Remove the extraneous cell_ids_rownames columns generated by the merges
-cols_to_remove <- c("cell_ids_rownames.x", "cell_ids_rownames.y", "cell_ids_rownames") 
-cols_to_remove_final <- intersect(cols_to_remove, colnames(dual_obj_combined_meta_v1_prime))
-
-dual_obj_combined_meta_v1_prime <- dual_obj_combined_meta_v1_prime %>%
-  select(-one_of(cols_to_remove_final))
-
-# Assign back to the Seurat object
-dual_obj_combined@meta.data <- dual_obj_combined_meta_v1_prime
-
-## Prime metadata 
-dual_obj_prime_meta_start <- dual_obj_prime@meta.data %>%
-  rownames_to_column(var = "cell_ids_rownames_initial")
-
-dual_obj_prime_meta_v1 <- merge(
-  x = dual_obj_prime_meta_start,
-  y = v1_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-)
-
-dual_obj_prime_meta_v1_combined <- merge(
-  x = dual_obj_prime_meta_v1,
-  y = combined_df_labels,
-  by = "matched_cell_ids",
-  all.x = TRUE
-) %>%
-  column_to_rownames(var = "cell_ids_rownames_initial")
-
-# Remove the extraneous cell_ids_rownames columns generated by the merges
-cols_to_remove <- c("cell_ids_rownames.x", "cell_ids_rownames.y", "cell_ids_rownames") 
-cols_to_remove_final <- intersect(cols_to_remove, colnames(dual_obj_prime_meta_v1_combined))
-
-dual_obj_prime_meta_v1_combined <- dual_obj_prime_meta_v1_combined %>%
-  select(-one_of(cols_to_remove_final))
-
-# Assign back to the Seurat object
-dual_obj_prime@meta.data <- dual_obj_prime_meta_v1_combined
-
-### Figure 4A - Triple UMAP
-
-# Color palettes
-get_clean_palette <- function(n) {
-  cols <- randomcoloR::distinctColorPalette(n + 20)
-  is_grey <- function(hex) {
-    rgb_val <- col2rgb(hex)
-    return(sd(rgb_val) < 15) 
-  }
-  clean_cols <- cols[!sapply(cols, is_grey)]
-  return(clean_cols[1:n])
-}
-
-# Generate palettes
-v1_colors <- get_clean_palette(10)
-prime_colors <- get_clean_palette(10)
-combo_colors <- get_clean_palette(14)
-
-# Set the NA color for UMAPS
-na_grey <- "grey40" 
-
-# V1 plot
-plot_v1_v1 <- DimPlot(dual_obj_v1, 
-                      reduction = "X_umap", 
-                      group.by = "leiden_0.5_v1", 
-                      raster = T, 
-                      cols = v1_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() +
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = v1_colors, na.value = na_grey)
-
-plot_v1_prime <- DimPlot(dual_obj_v1, 
-                         reduction = "X_umap", 
-                         group.by = "leiden_0.5_prime", 
-                         raster = T, 
-                         cols = prime_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() +
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = prime_colors, na.value = na_grey)
-
-plot_v1_combo <- DimPlot(dual_obj_v1, 
-                         reduction = "X_umap", 
-                         group.by = "leiden_0.5_combined", 
-                         raster = T, 
-                         cols = combo_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() +
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = combo_colors, na.value = na_grey)
-
-plot_v1 <- plot_v1_v1 / plot_v1_prime / plot_v1_combo
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/umap_v1_all_projections.pdf", width = 2.5, height = 6)
-print(plot_v1)
-dev.off()
-
-# Prime plots 
-plot_prime_v1 <- DimPlot(dual_obj_prime, 
-                         reduction = "X_umap", 
-                         group.by = "leiden_0.5_v1", 
-                         raster = T, 
-                         cols = v1_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = v1_colors, na.value = na_grey)
-
-plot_prime_prime <- DimPlot(dual_obj_prime, 
-                            reduction = "X_umap", 
-                            group.by = "leiden_0.5_prime", 
-                            raster = T, 
-                            cols = prime_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = prime_colors, na.value = na_grey)
-
-plot_prime_combo <- DimPlot(dual_obj_prime, 
-                            reduction = "X_umap", 
-                            group.by = "leiden_0.5_combined", 
-                            raster = T, 
-                            cols = combo_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = combo_colors, na.value = na_grey)
-
-plot_prime <- plot_prime_v1 / plot_prime_prime / plot_prime_combo
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/umap_prime_all_projections.pdf", width = 2.5, height = 6)
-print(plot_prime)
-dev.off()
-
-# Combo plots 
-plot_combo_v1 <- DimPlot(dual_obj_combined, 
-                         reduction = "X_umap", 
-                         group.by = "leiden_0.5_v1", 
-                         raster = T, 
-                         cols = v1_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = v1_colors, na.value = na_grey)
-
-plot_combo_prime <- DimPlot(dual_obj_combined, 
-                            reduction = "X_umap", 
-                            group.by = "leiden_0.5_prime", 
-                            raster = T, 
-                            cols = prime_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = prime_colors, na.value = na_grey)
-
-plot_combo_combo <- DimPlot(dual_obj_combined, 
-                            reduction = "X_umap", 
-                            group.by = "leiden_0.5_combined", 
-                            raster = T, 
-                            cols = combo_colors) +
-  coord_equal() + 
-  NoLegend() + 
-  theme_void() + 
-  theme(plot.title = element_blank()) +
-  scale_color_manual(values = combo_colors, na.value = na_grey)
-
-plot_combo <- plot_combo_v1 / plot_combo_prime / plot_combo_combo
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/umap_combo_all_projections.pdf", width = 2.5, height = 6)
-print(plot_combo)
-dev.off()
-
-### Figure 3B - alluvial 
-
-combo_origin_leiden <- dual_obj_combined_meta_v1_prime %>%
-  select(leiden_0.5_combined, leiden_0.5_v1, leiden_0.5_prime)
-
-clustree_df <- combo_origin_leiden %>%
-  mutate(
-    across(
-      .cols = everything(),
-      .fns = ~factor(replace_na(as.character(.), "NA"))
-    )
-  )
-
-colnames(clustree_df) <- c("leiden_1", "leiden_2", "leiden_3")
-
-custom_strata_order <- c(as.character(0:13), "NA") 
-
-clustree_df <- clustree_df %>%
-  mutate(
-    leiden_1 = factor(leiden_1, levels = custom_strata_order),
-    leiden_2 = factor(leiden_2, levels = custom_strata_order),
-    leiden_3 = factor(leiden_3, levels = custom_strata_order)
-  )
-
-alluvial_data <- clustree_df %>%
-  group_by(leiden_1, leiden_2, leiden_3) %>%
-  summarise(Freq = n(), .groups = "drop")
-
-alluvial <- ggplot(alluvial_data,
-                   aes(axis1 = leiden_1, axis2 = leiden_2, axis3 = leiden_3, y = Freq)) +
-  geom_alluvium(aes(fill = leiden_1),
-                width = 0.3,
-                curve_type = "sigmoid",
-                alpha = 1) +
-  geom_stratum(width = 0.3, fill = "grey90", color = "black") +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 2) +
-  scale_fill_manual(
-    values = combo_colors,
-    name = "Cluster label"
-  ) +
-  theme_classic() +
-  labs(y = "Number of cells", x = "") +
-  theme(
-    axis.text.y = element_text(color = "black", size = 8),
-    axis.title.y = element_text(color = "black", size = 9, face = "bold"),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    legend.position = "none"
-  )
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/combined_alluvial.pdf", width = 7, height = 4)
-alluvial
+### Figure 2E - ligand receptor uvenn diagram
+
+fit <- euler(c(
+  V1         = length(setdiff(unique(hits_v1$lr_pair), unique(hits_prime$lr_pair))),
+  Prime      = length(setdiff(unique(hits_prime$lr_pair), unique(hits_v1$lr_pair))),
+  "V1&Prime" = length(intersect(unique(hits_v1$lr_pair), unique(hits_prime$lr_pair)))
+))
+
+pdf('/home/smallapragada/v1_5K_panel_comparison_project/lr_venn_prop.pdf',
+    width = 1.75, height = 1.75)
+plot(fit,
+     fills      = list(fill = c("#C47A8A", "#4A7C9E"), alpha = 0.5),
+     edges      = list(col = c("#000000", "#000000"), lwd = 1.5),
+     labels     = list(fontsize = 6, fontface = "bold"),
+     quantities = list(fontsize = 5))
 dev.off()
 
 #### SUPPLEMENTAL MATERIAL ----
 
 ### Figure S1 - Correlation scatterplots per sample (V1_solo vs. V1_Prime)
-
-merged_obj_unfiltered_v1 <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/v1_slides_2025_11_20.rds")
-merged_obj_unfiltered_prime <- readRDS("/scratch/smallapragada/bbl_project/v1_prime5k_comparison/objects/prime_slides_2025_11_20.rds")
 
 ## V1 solo and dual counts
 merged_obj_unfiltered_v1_split <- SplitObject(merged_obj_unfiltered_v1, split.by = "slide_type")
@@ -1758,6 +1417,93 @@ pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_violin_nfeature_sa
 feature_plot_prime
 dev.off()
 
+### Figure S5 - Bar chart of V1 solo and Prime solo pre vs. post-filtering metrics 
+
+v1_solo <- readRDS("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/objects/v1_slides_2025_11_20.rds")
+prime_solo <- readRDS("/scratch/smallapragada/v1_prime5k_comparison_finished_2026_01/objects/prime_slides_2025_11_20.rds")
+
+v1_unfiltered <- v1_solo@meta.data %>%
+  filter(slide_type == "v1_solo")
+
+v1_filtered <- v1_unfiltered %>%
+  filter(nCount_RNA   >= 50,
+         nFeature_RNA >= 5,
+         cell_area    >= 5,
+         cell_area    <= 140,
+         nucleus_area >= 3)
+
+prime_unfiltered <- prime_solo@meta.data %>%
+  filter(slide_type == "prime_solo")
+
+prime_filtered <- prime_unfiltered %>%
+  filter(nCount_RNA   >= 50,
+         nFeature_RNA >= 5,
+         cell_area    >= 5,
+         cell_area    <= 140,
+         nucleus_area >= 3)
+
+stages <- c("Unfiltered - V1", "Filtered - V1", "Unfiltered - Prime", "Filtered - Prime")
+
+cell_counts <- tibble(
+  `Unfiltered - V1`    = nrow(v1_unfiltered),
+  `Filtered - V1`      = nrow(v1_filtered),
+  `Unfiltered - Prime` = nrow(prime_unfiltered),
+  `Filtered - Prime`   = nrow(prime_filtered)
+) %>%
+  pivot_longer(everything(), names_to = "Filtering_Stage", values_to = "Count") %>%
+  mutate(
+    Filtering_Stage = factor(Filtering_Stage, levels = stages),
+    groupings = case_when(
+      grepl("Unfiltered", as.character(Filtering_Stage)) ~ "Pre-filtering",
+      TRUE ~ "Post-filtering"
+    ),
+    groupings = factor(groupings, levels = c("Pre-filtering", "Post-filtering"))
+  )
+
+colors_stage <- c(
+  "Unfiltered - V1"    = "#8AAA90",
+  "Filtered - V1"      = "#2F6050",
+  "Unfiltered - Prime" = "#D3A1A0",
+  "Filtered - Prime"   = "#D37681"
+)
+
+y_max <- max(cell_counts$Count) * 1.1
+
+plot_cell_counts <- ggplot(cell_counts, aes(x = Filtering_Stage, y = Count, fill = Filtering_Stage)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  geom_text(aes(label = comma(Count)), vjust = -0.5, size = 1.5) +
+  scale_y_continuous(
+    limits = c(0, y_max),
+    labels = label_number(suffix = "K", scale = 1e-3, big.mark = "")
+  ) +
+  scale_fill_manual(values = colors_stage) +
+  facet_grid(. ~ groupings, space = "free", scales = "free_x", switch = "x") +
+  theme_classic() +
+  labs(y = "Cell counts", title = " ", fill = " ", x = " ") +
+  guides(fill = guide_legend(override.aes = list(size = 2),
+                             title.position = "right", nrow = 1,
+                             label.theme = element_text(size = 5),
+                             by_row = TRUE)) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(color = "black", size = 7),
+        axis.title.y = element_text(color = "black", face = "bold", size = 8),
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        strip.text = element_text(size = 8, face = "bold"),
+        axis.ticks.y = element_line(color = "black"),
+        plot.title = element_blank(),
+        legend.key.size = unit(2.5, "mm"),
+        legend.text = element_text(color = "black", size = 6),
+        legend.position = "top")
+
+pdf("/home/smallapragada/v1_5K_panel_comparison_project/bar_chart_pre_post_filtering_v1_prime_solo_slides.pdf", width
+    = 4, height = 4)
+plot_cell_counts
+dev.off()
+
 ### Figure S6 - Correlation scatterplots of V1 solo vs prime solo & V1 Dual vs prime dual for overlapped genes
 
 # V1_solo vs. Prime_solo
@@ -1818,140 +1564,4 @@ plot <- solo_plot + dual_plot
 
 pdf("/home/smallapragada/v1_5K_panel_comparison_project/supp_scatterplot_overlap_solo_dual.pdf", width = 7.5, height = 3.5)
 plot
-dev.off()
-
-### Figure S7 - V1 - Prime - Combined + Prime - V1 - Combined alluvial
-
-prime_origin_leiden <- dual_obj_prime_meta_v1_combined %>%
-  select(leiden_0.5_prime, leiden_0.5_v1, leiden_0.5_combined)
-
-clustree_df <- prime_origin_leiden %>%
-  mutate(
-    across(
-      .cols = everything(),
-      .fns = ~factor(replace_na(as.character(.), "NA"))
-    )
-  )
-
-colnames(clustree_df) <- c("leiden_1", "leiden_2", "leiden_3")
-
-custom_strata_order <- c(as.character(0:13), "NA") 
-
-clustree_df <- clustree_df %>%
-  mutate(
-    leiden_1 = factor(leiden_1, levels = custom_strata_order),
-    leiden_2 = factor(leiden_2, levels = custom_strata_order),
-    leiden_3 = factor(leiden_3, levels = custom_strata_order)
-  )
-
-cluster_colors <- c(
-  "#E6194B",  
-  "#3CB44B", 
-  "#FFE119",  
-  "#4363D8", 
-  "#F58231", 
-  "#911EB4", 
-  "#46F0F0", 
-  "#F032E6", 
-  "#BCF60C",  
-  "#FABEBE", 
-  "#008080", 
-  "#E6BEFF",  
-  "#AA6E28", 
-  "#800000" 
-)
-
-alluvial_data <- clustree_df %>%
-  group_by(leiden_1, leiden_2, leiden_3) %>%
-  summarise(Freq = n(), .groups = "drop")
-
-alluvial_prime <- ggplot(alluvial_data,
-                   aes(axis1 = leiden_1, axis2 = leiden_2, axis3 = leiden_3, y = Freq)) +
-  geom_alluvium(aes(fill = leiden_1),
-                width = 0.3,
-                curve_type = "sigmoid") +
-  geom_stratum(width = 0.3, fill = "grey90", color = "black") +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 2) +
-  scale_fill_manual(
-    values = cluster_colors,
-    name = "Cluster label"
-  ) +
-  theme_classic() +
-  labs(y = "Number of cells", x = "") +
-  theme(
-    axis.text.y = element_text(color = "black", size = 8),
-    axis.title.y = element_text(color = "black", size = 9, face = "bold"),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    legend.position = "none"
-  )
-
-v1_origin_leiden <- dual_obj_v1_meta_prime_combo %>%
-  select(leiden_0.5_v1, leiden_0.5_prime, leiden_0.5_combined)
-
-clustree_df <- v1_origin_leiden %>%
-  mutate(
-    across(
-      .cols = everything(),
-      .fns = ~factor(replace_na(as.character(.), "NA"))
-    )
-  )
-
-colnames(clustree_df) <- c("leiden_1", "leiden_2", "leiden_3")
-
-custom_strata_order <- c(as.character(0:13), "NA") 
-
-clustree_df <- clustree_df %>%
-  mutate(
-    leiden_1 = factor(leiden_1, levels = custom_strata_order),
-    leiden_2 = factor(leiden_2, levels = custom_strata_order),
-    leiden_3 = factor(leiden_3, levels = custom_strata_order)
-  )
-
-cluster_colors <- c(
-  "#E6194B",  
-  "#3CB44B", 
-  "#FFE119",  
-  "#4363D8", 
-  "#F58231", 
-  "#911EB4", 
-  "#46F0F0", 
-  "#F032E6", 
-  "#BCF60C",  
-  "#FABEBE", 
-  "#008080", 
-  "#E6BEFF",  
-  "#AA6E28", 
-  "#800000" 
-)
-
-alluvial_data <- clustree_df %>%
-  group_by(leiden_1, leiden_2, leiden_3) %>%
-  summarise(Freq = n(), .groups = "drop")
-
-alluvial_v1 <- ggplot(alluvial_data,
-                         aes(axis1 = leiden_1, axis2 = leiden_2, axis3 = leiden_3, y = Freq)) +
-  geom_alluvium(aes(fill = leiden_1),
-                width = 0.3,
-                curve_type = "sigmoid") +
-  geom_stratum(width = 0.3, fill = "grey90", color = "black") +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 2) +
-  scale_fill_manual(
-    values = cluster_colors,
-    name = "Cluster label"
-  ) +
-  theme_classic() +
-  labs(y = "Number of cells", x = "") +
-  theme(
-    axis.text.y = element_text(color = "black", size = 8),
-    axis.title.y = element_text(color = "black", size = 9, face = "bold"),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    legend.position = "none"
-  )
-
-alluvial <- alluvial_v1 / alluvial_prime
-
-pdf("/home/smallapragada/v1_5K_panel_comparison_project/prime_v1_alluvial_supp.pdf", width = 7, height = 8)
-alluvial
 dev.off()
